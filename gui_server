@@ -213,7 +213,7 @@ public class team_project2_Server extends JFrame {
             //150x150 사이즈에 맞쳐 이미지 재설정 (이렇게 하는 이유는 받아온 ImageIcon을 바로 add할 경우 이미지 짤리기 때문)
             ImageIcon changeIcon1 = new ImageIcon(changeimg1);  //새로운 ImageIcon으로 크기가 수정된 이미지를 다시 받아옴
             JLabel myimg1 = new JLabel(changeIcon1);
-            JLabel first_name = new JLabel("                 컴퓨터공학과 201736060 홍인표");  //사진 밑에 올 소개문자열
+            JLabel first_name = new JLabel("                 컴퓨터공학과 0000000");  //사진 밑에 올 소개문자열
 
             ImageIcon second = new ImageIcon("images/2.jpg");
             Image img2 = second.getImage();
@@ -221,7 +221,7 @@ public class team_project2_Server extends JFrame {
             //100x100 사이즈에 맞쳐 이미지 재설정
             ImageIcon changeIcon2 = new ImageIcon(changeimg2);
             JLabel myimg2 = new JLabel(changeIcon2);
-            JLabel second_name = new JLabel("                 컴퓨터공학과 201935298 유지희");
+            JLabel second_name = new JLabel("                 컴퓨터공학과 0000000");
 
             ImageIcon third = new ImageIcon("images/3.jpg");
             Image img3 = third.getImage();
@@ -229,7 +229,7 @@ public class team_project2_Server extends JFrame {
             //100x100 사이즈에 맞쳐 이미지 재설정
             ImageIcon changeIcon3 = new ImageIcon(changeimg3);
             JLabel myimg3 = new JLabel(changeIcon3);
-            JLabel third_name = new JLabel("                  컴퓨터공학과 201939272 아스리딘");
+            JLabel third_name = new JLabel("                  컴퓨터공학과 0000000");
 
             switch (n){             //초반 코드에서 선언한 전역변수 n 사용. n은 초기값으로 0으로 설정했음.
                 case 0:             //버튼을 처음 클릭할경우 (n==0)
