@@ -1,0 +1,775 @@
+import java.awt.*;
+import javax.swing.*;
+import java.awt.event.*;
+import java.io.*;
+import java.util.*;
+import javax.sound.sampled.*;
+import java.net.*;
+
+public class team_project2_Client extends JFrame {
+    public static int n=0;               //사진 바꾸는 순서지정
+    public static int catched=0;         //몬스터게임에서 잡힌 횟수 카운트 하는 수
+    public static int score = 0;         //몬스터게임에서 점수 카운트
+    public static int i = 0;    //스트링 배열 선언시 필요한 카운터 숫자
+    public static String[] s_array = new String[11]; //파일 입출력시 필요한 스트링 배열
+    public static int[] i_array = new int[11];       //파일 입출력시 필요한 정수형 배열
+    public static String[] read_array = new String[11];  //파일 입출력시 필요한 스트링배열
+    public static final long serialVersionUID = 1L;
+    private BufferedReader in = null;
+    private BufferedWriter out = null;
+    private ServerSocket listener = null;
+    private Socket socket = null;
+    private Receiver receiver; // JTextArea를 상속받고 Runnable 인터페이스를 구현한 클래스로서 받은 정보를 담는 객체
+    private JTextField sender; // JTextField 객체로서 보내는 정보를 담는 객체
+
+    public static class Circle{                  //panel2에서 원 그릴 클래스
+        private int x,y;                         //마우스 입력 좌표값
+        private int radius, r,g,b;               //원크기, 색상
+        public Circle(int x, int y, int radius, int r, int g, int b){    //좌표값과 원크기, 랜덤생성된 색상값
+            this.x = x;
+            this.y = y;
+            this.radius = radius;
+            this.r = r;
+            this.g = g;
+            this.b = b;
+
+        }
+        public Point getXY(){                //마우스좌표값 반환
+            return new Point(x,y);
+        }    //좌표값을 내보내는 함수
+        public Color getcolor(){
+            Color color = new Color(r,g,b);      //받은 rgb값 받아 색상으로 내보냄
+            return color;                        //색상 반환
+        }
+        public int getRadius(){              //원크기 반환
+            return radius;
+        }    //원크기 반환
+    }
+
+    public team_project2_Client() {
+        setTitle("Team Project2_Client");          //프레임타이틀
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); //프레임윈도우 닫으면 프로그램 종료
+        Container c = getContentPane();             //프레임 담는 컨테이너
+        c.setLayout(new BorderLayout());
+
+        receiver = new Receiver(); // 클라이언트에서 받은 메시지를 출력할 컴퍼넌트
+        receiver.setEditable(false); // 편집 불가
+        sender = new JTextField();
+        sender.addActionListener(new MyActionListener1());
+
+        setVisible(true);                           //화면에 출력
+        setSize(300,300);
+        c.add(new NorthPanel(), BorderLayout.NORTH);        //메뉴 panel
+        c.add(new CenterPanel(), BorderLayout.CENTER);      //메인 panel(버튼 안눌렀을 때이기 때문에
+        //기본 panel로 추가됨
+
+        try {
+            setupConnection();
+        } catch (IOException e) {
+            handleError(e.getMessage());
+        }
+        Thread th = new Thread(receiver); // 상대로부터 메시지 수신을 위한 스레드 생성
+        th.start();
+
+    }
+
+    // 프레임의 NORTH 영역에 부착되는 패널 클래스
+    class NorthPanel extends JPanel {
+        public NorthPanel() {
+            setBackground(Color.LIGHT_GRAY); // 배경색 설정
+            setLayout(new FlowLayout());
+            Container c = getContentPane(); //화면 받아옴
+
+            JMenuItem btn1 = new JMenuItem("팀소개");  //첫번째메뉴
+            btn1.addActionListener(new MyActionListener()); //메뉴아이템의 클릭반응을 위한 코드
+
+            JMenuItem btn2 = new JMenuItem("페인팅");  //두번째메뉴
+            btn2.addActionListener(new MyActionListener());
+
+            JMenuItem btn3 = new JMenuItem("글사랑");  //세번째메뉴
+            btn3.addActionListener(new MyActionListener());
+
+            JMenuItem btn4 = new JMenuItem("게임시작");  //네번째메뉴
+            btn4.addActionListener(new MyActionListener());
+
+            JMenuItem btn5 = new JMenuItem("점수조회");  //다섯번째메뉴
+            btn5.addActionListener(new MyActionListener());
+
+            JMenuItem btn6 = new JMenuItem("오디오재생");  //여섯번째메뉴
+            btn6.addActionListener(new MyActionListener());
+
+            JMenuItem btn7 = new JMenuItem("Client");  //일곱번째메뉴
+            btn7.addActionListener(new MyActionListener());
+
+
+
+            JMenuBar mb = new JMenuBar();   //메뉴바 생성
+            JMenu assignmentMenu = new JMenu("기존과제");   //메뉴생성
+            JMenu gameMenu = new JMenu("게임수행");
+            JMenu media = new JMenu("미디어재생");
+            JMenu chat = new JMenu("채팅");
+
+            mb.add(assignmentMenu); //메뉴바에 메뉴추가
+            mb.add(gameMenu);
+            mb.add(media);
+            mb.add(chat);
+
+            assignmentMenu.add(btn1);   //기존과제 메뉴의 아이템
+            assignmentMenu.add(btn2);
+            assignmentMenu.add(btn3);
+
+            gameMenu.add(btn4);         //게임수행 메뉴의 아이템
+            gameMenu.add(btn5);
+
+            media.add(btn6);            //미디어재생 아이템
+
+            chat.add(btn7);             //채팅 아이템
+
+            setJMenuBar(mb);            //메뉴바 세팅
+
+
+        }
+    }
+
+    public class MyActionListener implements ActionListener {   //위 addActionListener에 사용할 클래스
+        public void actionPerformed(ActionEvent e){             //버튼이 클릭되는 경우
+            JMenuItem b = (JMenuItem)e.getSource();             //값 받아옴
+
+            if(b.getText().equals("팀소개")){                      //받아온 버튼값이 "팀소개"일 경우
+                Container c = getContentPane();
+                c.removeAll();                  //삭제
+                c.setLayout(new BorderLayout());
+                c.revalidate();                                 //새로 호출시켜 다시 패널을 넣을 준비
+                c.add(new NorthPanel(), BorderLayout.NORTH); //버튼 panel  추가
+                c.add(new panel1(), BorderLayout.CENTER);   //panel1 패널을 추가
+
+            }
+
+            else if(b.getText().equals("페인팅")){
+                Container c = getContentPane();
+                c.removeAll();
+                c.setLayout(new BorderLayout());
+                c.revalidate();
+                setVisible(true);
+                c.add(new NorthPanel(), BorderLayout.NORTH);
+                c.add(new panel2(), BorderLayout.CENTER);
+            }
+
+            else if(b.getText().equals("글사랑")){
+                Container c = getContentPane();
+                c.removeAll();
+                c.setLayout(new BorderLayout());
+                c.revalidate();
+                c.add(new NorthPanel(), BorderLayout.NORTH);
+                c.add(new panel3(), BorderLayout.CENTER);
+            }
+            else if(b.getText().equals("게임시작")){
+                Container c = getContentPane();
+                c.removeAll();
+                c.setLayout(new BorderLayout());
+                c.revalidate();
+                c.add(new NorthPanel(), BorderLayout.NORTH);
+                c.add(new panel4("@","M",'q',200), BorderLayout.CENTER);
+                //패널4의 경우 몬스터게임을 실행하기 때문에 생성자에 위와 같은 값이 들어감
+            }
+            else if(b.getText().equals("점수조회")){
+                Container c = getContentPane();
+                c.removeAll();
+                c.setLayout(new BorderLayout());
+                c.revalidate();
+                c.add(new NorthPanel(), BorderLayout.NORTH);
+                c.add(new panel5(), BorderLayout.CENTER);
+            }
+            else if(b.getText().equals("오디오재생")){
+                Container c = getContentPane();
+                c.removeAll();
+                c.setLayout(new BorderLayout());
+                c.revalidate();
+                c.add(new NorthPanel(), BorderLayout.NORTH);
+                c.add(new panel6(), BorderLayout.CENTER);
+            }
+            else if(b.getText().equals("Client")){
+                Container c = getContentPane();
+                c.removeAll();
+                c.setLayout(new BorderLayout());
+                c.revalidate();
+                c.add(new NorthPanel(), BorderLayout.NORTH);
+                c.add(new JScrollPane(receiver),BorderLayout.CENTER); // 스크롤바를 위해  ScrollPane 이용
+                c.add(sender,BorderLayout.SOUTH);
+            }
+
+        }
+    }
+
+    static class panel1 extends JPanel{                                 //버튼1에 대한 동작을 하는 패널
+        public panel1(){
+            setLayout(new BorderLayout());
+
+            ImageIcon first = new ImageIcon("images/1.jpg");    //images폴더에 있는 1.jpg사진 담아오기
+            Image img1 = first.getImage();
+            Image changeimg1 = img1.getScaledInstance(150,150,Image.SCALE_SMOOTH);
+            //150x150 사이즈에 맞쳐 이미지 재설정 (이렇게 하는 이유는 받아온 ImageIcon을 바로 add할 경우 이미지 짤리기 때문)
+            ImageIcon changeIcon1 = new ImageIcon(changeimg1);  //새로운 ImageIcon으로 크기가 수정된 이미지를 다시 받아옴
+            JLabel myimg1 = new JLabel(changeIcon1);
+            JLabel first_name = new JLabel("                  컴퓨터공학과 201736060 홍인표");  //사진 밑에 올 소개문자열
+
+            ImageIcon second = new ImageIcon("images/2.jpg");
+            Image img2 = second.getImage();
+            Image changeimg2 = img2.getScaledInstance(150,150,Image.SCALE_SMOOTH);
+            //100x100 사이즈에 맞쳐 이미지 재설정
+            ImageIcon changeIcon2 = new ImageIcon(changeimg2);
+            JLabel myimg2 = new JLabel(changeIcon2);
+            JLabel second_name = new JLabel("                  컴퓨터공학과 201935298 유지희");
+
+            ImageIcon third = new ImageIcon("images/3.jpg");
+            Image img3 = third.getImage();
+            Image changeimg3 = img3.getScaledInstance(150,150,Image.SCALE_SMOOTH);
+            //100x100 사이즈에 맞쳐 이미지 재설정
+            ImageIcon changeIcon3 = new ImageIcon(changeimg3);
+            JLabel myimg3 = new JLabel(changeIcon3);
+            JLabel third_name = new JLabel("                  컴퓨터공학과 201939272 아스리딘");
+
+            switch (n){             //초반 코드에서 선언한 전역변수 n 사용. n은 초기값으로 0으로 설정했음.
+                case 0:             //버튼을 처음 클릭할경우 (n==0)
+                    add(myimg1, BorderLayout.CENTER);       //해당 사진을 패널에 추가
+                    add(first_name, BorderLayout.SOUTH);    //해당 문자열을 패널에 추가
+                    n++;        //n을 늘려 다음 사진으로 넘어가도록 설정(n==1)
+                    break;
+                case 1:
+                    add(myimg2, BorderLayout.CENTER);
+                    add(second_name, BorderLayout.SOUTH);
+                    n++;        //n을 늘려 다음 사진으로 넘어가도록 설정(n==2)
+                    break;
+                case 2:
+                    add(myimg3, BorderLayout.CENTER);
+                    add(third_name, BorderLayout.SOUTH);
+                    n=0;    //n을 초기상태로 재설정해 반복 (n==0)
+                    break;
+            }
+        }
+    }
+
+    static class panel2 extends JPanel{     //두번째 버튼을 눌렀을 때 나오는 패널
+
+        public static Vector<Circle> cv = new Vector<Circle>(); //원을 차례로 저장할 벡터
+
+        public panel2(){
+            setLayout(null);            //배치관리자 삭제
+            setBackground(Color.WHITE);     //패널의 배경을 흰색으로 설정
+            addMouseListener(new MouseAdapter() {   //마우스 사용시 활용됨
+                @Override
+                public void mouseReleased(MouseEvent e) {   //마우스가 떼어질경우 동작,드래그될때도 동작가능하게 수정하였음
+                    JPanel c = (JPanel) e.getSource();      //패널을 담아옴
+                    c.setFocusable(true);                   //포커스 받을수 있도록 설정
+                    c.requestFocus();                       //포커스를 주어 키 입력 받도록
+                    Point p = e.getPoint();                 //좌표값을 받아옴
+
+                    int radius = (int)(Math.random()*21+10);    //원 크기가 너무 작아 10~30까지 크기 랜덤지정
+                    int r,g,b;
+                    r = (int)(Math.random()*256);           //각 r,g,b값을 랜덤으로 지정
+                    g = (int)(Math.random()*256);
+                    b = (int)(Math.random()*256);
+
+                    cv.add(new Circle(p.x,p.y, radius, r,g,b));     //Circle클래스를 활용해 각 값을 원을 저장할 벡터에 저장
+                    // add하지 않으면 원이 그려지지않음
+                    repaint();                              //갱신시 필요
+                }
+            });
+        }
+        public void paintComponent(Graphics gg){        //스윙 컴포넌트가 모양을 그리는 메소드로 그릴때마다 호출됨
+            super.paintComponent(gg);
+
+            for(int i=0; i<cv.size(); i++){
+                Circle c = cv.get(i);           //원을 저장한 벡터에서 가져옴
+                Point p = c.getXY();              //마우스좌표값
+                Color color = c.getcolor();       //컬러값
+                gg.setColor(color);               //가져온 값으로 컬러 지정
+                int radius = c.getRadius();       //원의 크기
+                gg.fillOval(p.x,p.y, radius, radius);          //원그리기
+            }
+        }
+    }
+
+    static class panel3 extends JPanel{         //세번째 버튼에 사용되는 패널
+        panel3(){
+            setBackground(Color.WHITE);     //패널배경색 흰색으로 설정
+            setLayout(null);            //배치관리자 삭제
+
+            JLabel label = new JLabel("문자를 추가(다시 입력시 다음줄에 출력)");    //Textfield옆 설명 글
+            label.setSize(250,20);  //배치관리자를 삭제해 위와같이 크기와 위치를 직접지정
+            label.setLocation(40,20);
+
+
+            JTextField textfield = new JTextField();    //문자열을 입력받는 Textfield
+            textfield.setSize(140,20);
+            textfield.setLocation(40,40);
+
+
+            JTextArea textarea = new JTextArea();   //입렫받은 문자열을 출력하는 Textarea
+            textarea.setSize(300,300);
+            textarea.setLocation(55,100);
+            textarea.setEditable(false);        //실행화면에서 수정불가능하도록 막음
+
+            JButton button = new JButton("입력"); //입력버튼 생성
+            button.setSize(70,20);
+            button.setLocation(190,40);
+
+            button.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    textarea.append(textfield.getText());
+                    //입력버튼이 눌리면 textarea에서 값을 가져와 바로 textarea에 추가하여 나타냄
+                    textfield.setText("");  //텍스트필드값 초기화시켜 입력된 문자 텍스트필드에 지우기
+                    textarea.append("\n");  //한줄 엔터
+
+                }
+            });
+
+            textfield.addKeyListener(new KeyAdapter() {
+                @Override
+                public void keyPressed(KeyEvent e) {
+                    if(e.getKeyCode()==10){         //엔터키 누를경우 바로 위 코드의 버튼 액션리스너가 실행되도록 함
+                        button.doClick();           //버튼 안누르고 문자열 입력하고 바로 엔터쳐도 문자열 입력되는 효과
+                    }
+                }
+            });
+
+
+
+            add(label);             //각 버튼, textarea, textfield, label을 패널에 추가
+            add(textarea);
+            add(textfield);
+            add(button);
+        }
+    }
+
+    static class panel4 extends JPanel{     //4번째 패널로 게임수행 메뉴의 게임시작 아이템 실행화면
+        private String avatarChar;
+        private String monsterChar;
+        private char quitChar;
+        private long monsterDelay;
+        private JLabel avatar;// 아바타를 위한 레이블
+        private JLabel monster; // 괴물을 위한 레이블
+        final int AVATAR_MOVE = 10; // 아바타가 한번에 움직이는 픽셀 수
+        public panel4(String avatarChar, String monsterChar, char quitChar, long monsterDelay){
+            setLayout(new BorderLayout());
+
+            JLabel explain = new JLabel("화면을 클릭 후 방향키를 조작해 도망치세요.");    //화면의 설명글
+
+            this.avatarChar = avatarChar;
+            this.monsterChar = monsterChar;
+            this.quitChar = quitChar;
+            this.monsterDelay = monsterDelay;
+
+            // 아바타와 괴물 레이블 생성
+            avatar = new JLabel(avatarChar);
+            monster = new JLabel(monsterChar);
+
+            setLayout(null); // 아타바 레이블과 괴물 레이블의 위치를 마음대로 지정할 수 있도록 null로 설정
+            addKeyListener(new MyKeyListener()); // 키 리스너 등록
+
+            explain.setLocation(50,10);             //설명글 Jlabel 위치 및 크기 지정
+            explain.setSize(400,20);
+            add(explain);
+
+            // 아바타 레이블의 위치와 크기 설정 및 팬에 부착
+            avatar.setLocation(50,50);
+            avatar.setSize(15,15);
+            avatar.setForeground(Color.RED);
+            add(avatar);
+
+            // 괴물 레이블의 위치와 크기 설정 및 팬에 부착
+            monster.setLocation(200,5);
+            monster.setSize(15,15);
+
+            add(monster);
+
+            // 괴물을 움직이는 스레드 생성 및 시작
+            MonsterThread th = new MonsterThread(monster, avatar, monsterDelay);
+            th.start();
+
+            // 이 패널을 마우스로 클릭하면 강제로 포커스를 이 패널로 가져와서 키 입력을 처리할 수 있게 한다.
+            this.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    JPanel panel = (JPanel)e.getSource();
+                    panel.requestFocus();
+                }
+            });
+        }
+        // GamePanel에 등록된 키 리스너. 상, 하, 좌, 우 키와 'q' 키 처리
+        class MyKeyListener extends KeyAdapter {
+            @Override
+            public void keyPressed(KeyEvent e) {
+
+                if(e.getKeyChar() == quitChar || catched ==3) // 큐가 입력되거나 3번 잡혔을 때 시스템종료
+                    System.exit(0); // 종료 키가 입력되면 프로그램 종료
+
+                int keyCode = e.getKeyCode(); // 상, 하, 좌, 우 키는 유니코드 키가 아님
+
+                // 키에 따라 아바타 레이블을 AVATAR_MOVE 픽셀 만큼 움직인다.
+                switch(keyCode) {
+                    case KeyEvent.VK_UP:
+                        avatar.setLocation(avatar.getX(), avatar.getY()-AVATAR_MOVE);
+                        break;
+                    case KeyEvent.VK_DOWN:
+                        avatar.setLocation(avatar.getX(), avatar.getY()+AVATAR_MOVE);
+                        break;
+                    case KeyEvent.VK_LEFT:
+                        avatar.setLocation(avatar.getX()-AVATAR_MOVE, avatar.getY());
+                        break;
+                    case KeyEvent.VK_RIGHT:
+                        avatar.setLocation(avatar.getX()+AVATAR_MOVE, avatar.getY());
+                        break;
+                }
+                avatar.getParent().repaint(); // 아바타의 위치가 변경되었으므로 다시 그리기
+                // 아바타가 있는 패널에는 이전의 위치에 있었던 아바타를 지워야 하기 때문에
+                // 아바타의 부모 패널에게 다시그리기를 지시함
+            }
+        }
+
+        // 괴물 레이블을 움직이는 200ms 당 5 픽셀을 움직이면서 끊임없이 아바타를 추적하는 스레드
+        // 생성자는 두 개의 레이블 컴포넌트를 전달받는다. 첫번째 from이 두번째 to 레이블을 추적한다.
+        class MonsterThread extends Thread {
+
+            private JLabel from; // 좇아가는 레이블. 괴물 레이블
+            private JLabel to; // 도망가는 레이블. 아바타 레이블
+            private long monsterDelay;
+            private final int MONSTER_MOVE = 5; // from 레이블이 한번에 이동하는 거리
+
+            public MonsterThread(JLabel from, JLabel to, long monsterDelay) {
+                this.from = from;
+                this.to = to;
+                this.monsterDelay = monsterDelay;
+            }
+
+            @Override
+            public void run() {
+                int x=from.getX(),y=from.getY(); // 현재 괴물의 위치
+                int n = 0;
+
+                while(true) {
+                    n++;            //타이머 카운트
+                    System.out.print("사용 "+to.getX());//아바타 위치 콘솔 출력
+                    System.out.println(" "+to.getY());
+                    System.out.print(from.getX());//몬스터위치 콘솔 출력
+                    System.out.println(from.getY());
+                    if((to.getX() == from.getX()-MONSTER_MOVE) && (to.getY() == from.getY()) ){
+                        x = from.getX();
+                        y = from.getY();
+                        catched++;
+                        System.out.println("catched: "+catched);    //사용자가 괴물에게 잡힐때마다 콘솔화면에서 몇번 잡혔는지 출력
+                    }
+                    if((catched ==3) || (n>300)){    //3번 잡히거나 타이머 300 넘어가면 게임 끝, 다이어로그 열어 입력받기
+                        int myscore = n/2;              //점수는 n값이 2올라갈때 1점 올라가도록 설정
+                        String myscorestring = Integer.toString(myscore);   //점수를 스트링에 추가하기 위해 형변환
+                        String name = JOptionPane.showInputDialog("게임 종료! YOUR SCORE= "+myscore+" 이름을 입력하세요.");
+                        //다이어로그로 이름 입력받음
+                        name = name+"   점수: "+myscorestring;    //이름과 점수를 입력받음
+
+                        FileReader fin = null;          //읽기파일 선언
+
+                        try{
+                            fin = new FileReader("c:\\SCORE.txt");  //경로를 지정해 파일 열기
+                            BufferedReader bf = new BufferedReader(fin);    //버퍼를 활용해 라인별로 입력받음
+                            String line = "";       //줄단위로 입력받을 때 필요한 스트링
+
+                            while((line = bf.readLine()) != null){      //줄단위로 읽어 파일 끝까지 읽음
+                                s_array[i] = line;                      //이름과 점수 합친 모든 정보를 입력받는 배열
+                                read_array[i] = line.replaceAll("[^\\d]","");
+                                //숫자를 제외한 모든문자를 없애 숫자만 남기는 배열
+                                i_array[i] = Integer.parseInt(read_array[i]);
+                                //각 사용자의 스코어를 비교하기 위해 배열을 정수형으로 바꿈
+                                System.out.println(i+"번쨰로 읽어온 것 "+s_array[i]);
+                                //읽어온 파일의 이름과 점수를 순서대로 콘솔에 출력
+                                i++;        //한줄 다 읽었기 때문에 i 증가하여 다음배열에서 입력 또 받도록 함
+                            }
+                            bf.close(); //버퍼 닫아줌
+                        }catch (IOException e){     //파일이 없거나 열리지 않을 때
+                            System.out.println("못찾음");
+                            i = 0;      //다이어로그에서 입력된 이름과 점수가 첫번쨰 배열에 입력받도록 하기 위해
+                        }
+
+
+                        if(i<=10){
+                        	//배열은 0~10까지이어야함. 총 11개인 이유는 10개의 배열이 꽉 차는 경우 밑 코드의i++시 오류가 생기기때문 
+                            if(i == 0){             //기존의 점수가 없는 경우 첫 스트링에 바로 입력
+                                i_array[0] = myscore;
+                                s_array[0] = name;
+                            }
+                            else{       //기존 점수가 있는 경우
+                                for(int j=0; j<=i;j++){         //배열의 처음부터 현재 찬 배열까지 반복해 각각 점수를 비교
+                                    if(myscore>=i_array[j]){    //새로 들어온 점수가 기존의 점수보다 크거나 같은 경우
+                                        for(int k=i;k>=j;k--){
+                                            //배열의 반대편(점수가 작은쪽)끝부터 시작해 새로 들어온 점수보다 작을때까지 반복
+                                            if(k >= 9){         //반대편 끝 배열이 꽉 찼을 경우 버림
+                                                i_array[k] = 0;
+                                                s_array[k] = null;
+                                            }
+
+                                            else if(k < 9){     //한칸 씩 뒤로 밀림
+                                                i_array[k+1] = i_array[k];
+                                                s_array[k+1] = s_array[k];
+                                            }
+                                        }
+                                        i_array[j] = myscore;   //한칸 씩 밀려 중간에 배열 빈부분이 생김 이 부분에 새 점수 넣음
+                                        s_array[j] = name;      //i_array가 있는 이유는 점수만 저장해 점수 비교를 위함
+                                        System.out.println("새로운 배열은"+j+"번쨰로 저장됨 "); //콘솔에 저장된 배열이 몇번째인지 출력
+                                        break;
+                                    }
+                                    else{//새로 들어온 값이 기존값보다 작아 배열에 입력되지 않았기 때문에 밑 i++를 생략하기위한 코드
+                                        if(i>=9)
+                                            i--;
+                                    }
+
+
+                                }
+                            }
+                            i++;        //배열이 추가되었기 때문에 증가
+                        }
+
+                        FileWriter fout = null;     //쓰기파일 선언
+                        try{
+                            fout = new FileWriter("c:\\SCORE.txt"); //저장할 파일의 위치와 이름
+                            if(i == 1) {    //기존 점수가 없어 첫번째로 파일에 저장하는 경우
+                                System.out.println((i - 1) + "번째 " + s_array[i - 1]);
+                                fout.write(s_array[i - 1], 0, s_array[i - 1].length());//파일에 쓰는 과정
+                                fout.write("\r\n", 0, 2);   //줄바꿔 다음줄을 대기하도록 함
+                            }
+                            else if(i>9){   //기존 점수가 10개로 꽉 차있는 경우
+                                for(int j=0; j<=i; j++){    //한줄 씩 파일에 저장
+                                    System.out.println(j+"번째 "+s_array[j]);
+
+                                    fout.write(s_array[j], 0, s_array[j].length());
+                                    fout.write("\r\n", 0, 2);
+                                }
+                            }
+                            else{   //기존점수가 있으면서 10개 이하일 경우
+                                for(int j=0; j<i; j++){
+                                    System.out.println(j+"번째 "+s_array[j]);
+
+                                    fout.write(s_array[j], 0, s_array[j].length());
+                                    fout.write("\r\n", 0, 2);
+                                }
+                            }
+
+                            fout.close();   //파일닫기
+                            System.exit(0); //프로그램 종료
+                        }catch (IOException e){
+                            System.out.println("오류");
+                        }
+
+
+                    }
+
+                    if(to.getX() < from.getX()) // 아바타가 괴물의 왼쪽이 있는 경우
+                        x = from.getX() - MONSTER_MOVE;
+
+                    else 						// 아바타가 괴물의 오른쪽이 있는 경우
+                        x = from.getX() + MONSTER_MOVE;
+
+                    if(to.getY() < from.getY()) // 아바타가 괴물의 위쪽이 있는 경우
+                        y = from.getY() - MONSTER_MOVE;
+
+                    else 						// 아바타가 괴물의 아래쪽이 있는 경우
+                        y = from.getY() + MONSTER_MOVE;
+
+                    // 괴물의 위치 수정
+                    from.setLocation(x, y);
+                    // 괴물의 위치가 변경되었기 때문에 괴물을 포함하는 패널을 다시 그리도록 함
+                    from.getParent().repaint();
+                    // 200ms 동안 잠을 잔다.
+                    try {
+                        sleep(monsterDelay);
+                    }catch(InterruptedException e) {
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+
+    static class panel5 extends JPanel{         //5번째 패널로 점수조회 버튼 누르면 나오는 화면
+        public panel5(){
+            setLayout(null);
+            setBackground(Color.WHITE);
+
+            JLabel score_title = new JLabel("SCORE BOARD"); //제목 출력 JLabel
+            score_title.setSize(100,20);
+            score_title.setLocation(100,10);
+
+            FileReader fin2 = null;     //파일리더 선언
+            String show_score = new String();   //받아와 저장할 스트링
+            JTextArea show = new JTextArea();
+            int n=0;        //순서대로 등수를 저장할 때 쓰이는 변수
+            try{
+                fin2 = new FileReader("c:\\SCORE.txt"); //경로지정해 파일 읽어옴
+                BufferedReader bf = new BufferedReader(fin2);   //버퍼로 받아옴
+                String line = "";
+
+                while((line = bf.readLine()) != null){  //파일 끝까지 받아옴
+                    show.append((n+1)+"등 -> "+line+"\n");   //등수대로 추가하고 줄바꿈
+                    System.out.println((n+1)+"등: "+line); //콘솔에 출력
+                    n++;             //순서 증가
+                }
+                bf.close();         //버퍼닫기
+            }catch (IOException e){ //파일을 못열거나 데어터가 없어 파일이 없는 경우
+                System.out.println("못찾음");
+                show.append("아직 등록된 순위가 없습니다.\n게임을 실행하여 기록을 남기세요.");
+            }
+
+            show.setSize(200,300);
+            show.setLocation(20,40);
+            show.setEditable(false);        //실행창에서 수정 불가능하도록 설정
+
+            add(score_title);
+            add(show);
+
+        }
+    }
+
+    static class panel6 extends JPanel{         //오디오재생 메뉴아이템 누르면 나오는 화면
+        public panel6(){
+            setLayout(null);
+            setBackground(Color.WHITE);
+
+            JLabel title = new JLabel("Audio Player");  //제목 JLabel
+            title.setSize(110,60);
+            title.setLocation(110,10);
+            JButton play = new JButton("PLAY");     //play버튼으로 음악시작
+            JButton stop = new JButton("STOP");     //음악중단
+            JButton again = new JButton("AGAIN");  //음악 처음부터 시작
+
+            try {
+                // 오디오 인풋스트림
+                File soundFile = new File("c:\\sample.wav");//미리 저장해 놓은 파일 열기
+                AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);  //인풋스트림 생성
+                AudioFormat format = audioIn.getFormat();   //포맷 가져옴
+                DataLine.Info info = new DataLine.Info(Clip.class, format);
+                //단일오디오 형식을 포함한 지정한 정보를 가지고 데이터 라인의 정보를 생성(오디오형식 포함해 받아옴)
+                Clip clip = (Clip)AudioSystem.getLine(info);    //이벤트가 발생하는 오디오크립 객체
+                clip.open(audioIn);     //열기
+
+                play.addActionListener(new ActionListener() {   //play버튼에 동작되는 리스너
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        clip.start();
+                    }   //음악시작
+                });
+                play.setSize(80,20);
+                play.setLocation(30,200);
+
+
+                stop.addActionListener(new ActionListener() {   //stop버튼에 동작되는 리스너
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        clip.stop();
+                    }   //음악중단
+                });
+                stop.setSize(80,20);
+                stop.setLocation(100,200);
+
+
+                again.addActionListener(new ActionListener() {  //again버튼에 동작되는 리스너
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        clip.setMicrosecondPosition(0); //음악을 처음으로 설정, clip.setFramePosition(0);도 가능
+                        clip.start();                   //음악 시작
+                    }
+                });
+                again.setSize(80,20);
+                again.setLocation(170,200);
+
+
+            } catch (UnsupportedAudioFileException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (LineUnavailableException e) {
+                e.printStackTrace();
+            }
+
+            add(title);
+            add(play);
+            add(stop);
+            add(again);
+        }
+    }
+
+
+    private void setupConnection() throws IOException {
+
+        socket = new Socket("localhost",9998); // 클라이언트 소켓 생성 및 연결
+        System.out.println("연결됨");
+        receiver.append("서버에 연결 완료");
+        int pos = receiver.getText().length();
+        receiver.setCaretPosition(pos); // caret 포지션을 가장 마지막으로 이동(caret: 내용을 저장할 수 있는 장소)
+
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream())); // 클라이언트로부터의 입력 스트림
+        out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())); // 클라이언트로의 출력 스트림
+    }
+
+    private static void handleError(String string) {
+        System.out.println(string);
+        System.exit(1);
+    }
+
+    private class Receiver extends JTextArea implements Runnable {//Runnable은 다중상속과 같은 기능 지원해줌
+																	//원래는 한개 이상의 클래스 상속 불가능
+																	//Runnable 인터페이스를 통해 Thread상속기능 구현 
+        private static final long serialVersionUID = 2L;//컴파일러가 값을 계산해 부여하는것을 막기위함(값이 달라지는 것을 막음)
+        //파일 전송시 직렬화(serializable)을 해야 해 serializable인터페이스를 쓴다. 여기서 serialVersionUID는 직렬화에 사용되는 고유 아이디
+        @Override
+        public void run() {
+            String msg = null;
+            while (true) {
+                try {
+                    msg = in.readLine(); // 상대로부터 한 행의 문자열 받기
+                } catch (IOException e) {
+                    handleError(e.getMessage());
+                }
+
+                this.append("\n  서버 : " + msg); // 받은 문자열을 JTextArea에 출력
+                int pos = this.getText().length();
+                this.setCaretPosition(pos); // caret 포지션을 가장 마지막으로 이동
+
+            }
+        }
+    }
+
+    public class MyActionListener1 implements ActionListener{
+        public void actionPerformed(ActionEvent e) { // JTextField에 <Enter> 키 처리
+            if (e.getSource() == sender) {
+                String msg = sender.getText(); // 텍스트 필드에서 문자열 얻어옴
+                try {
+                    out.write(msg+"\n"); // 문자열 전송
+                    out.flush();
+
+                    receiver.append("\n클라이언트 : " + msg);// JTextArea에 출력
+                    int pos = receiver.getText().length();
+                    receiver.setCaretPosition(pos); // caret 포지션을 가장 마지막으로 이동
+                    sender.setText(null); // 입력창의 문자열 지움
+                } catch (IOException e1) {
+                    handleError(e1.getMessage());
+                }
+            }
+        }
+    }
+
+
+    class CenterPanel extends JPanel {  //처음시작할때 센터부분
+        public CenterPanel() {
+
+            setLayout(null);
+            JLabel start = new JLabel("메뉴에서 원하는 기능을 클릭하세요.");
+            start.setSize(200,20);
+            start.setLocation(50,90);
+            add(start);
+        }
+    }
+
+    public static void main(String[] args) {
+        new team_project2_Client();
+    }   //실행
+}
